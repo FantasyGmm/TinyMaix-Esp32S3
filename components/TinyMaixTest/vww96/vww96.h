@@ -21,5 +21,5 @@
 //#include "pic_person2.h"
 //#include "pic_person3.h"
 
-char* vww96_labels[VWW96_CLASS_NUM] = {"no-person", "person"};
+static char* vww96_labels[VWW96_CLASS_NUM] = {"no-person", "person"};
 int test_vww96(int argc, char** argv);

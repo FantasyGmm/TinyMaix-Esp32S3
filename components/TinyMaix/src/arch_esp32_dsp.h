@@ -21,44 +21,81 @@ limitations under the License.
 //sum = SUM(Ai*Bi)
 TM_INLINE void tm_dot_prod(mtype_t* sptr, mtype_t* kptr,uint32_t size, sumtype_t* result)
 {
-	sumtype_t sum;
+	sumtype_t sum = 0;
 	uint32_t i = 0;
 	uint32_t cnt = (size>>3)<<3; //8
-	int16_t res = 0;
-	int16_t *p1 = malloc(sizeof (int16_t)*size);
-	int16_t *p2 = malloc(sizeof (int16_t)*size);
-	for (; i +8-1 < cnt; i++)
+
+	sumtype_t res = 0;
+	int16_t *p1 = malloc(sizeof (int16_t)*8);
+	int16_t *p2 = malloc(sizeof (int16_t)*8);
+	memset(p1,0,size);
+	memset(p1,0,size);
+	for (; i +8-1 < cnt;)
 	{
-		*p1 = (int16_t)*sptr++;
-		*p2 = (int16_t)*kptr++;
+		for (int j = 0; j < 8; ++j)
+		{
+			// printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
+			p1[j] = (int16_t)sptr[i];
+			p2[j] = (int16_t)kptr[i++];
+		}
+		// printf("i:%d cnt:%d\n",i,cnt);
+		dsps_dotprod_s16_ae32(p1, p2, &res, 8, 15);
+		sum+=res;
 	}
-	dsps_dotprod_s16_ae32(p1, p2, &res, (int )size, 8);
-	sum = res;
-	printf("first prod is %d\n",sum);
-    for(; i <size; i++){
-	    dsps_dotprod_s16_ae32(p1, p2, &res, (int )size, 0);
-    }
-	printf("last prod is %d\n",sum);
+	// printf("first prod is sum:%d\n",sum);
+	int j = 0;
+	for (; i < size; j++)
+	{
+		// printf("sptr:%d kptr:%d i:%d j:%d\n",sptr[i],kptr[i],i,j);
+		p1[j] = (int16_t)sptr[i];
+		p2[j] = (int16_t)kptr[i++];
+	}
+	dsps_dotprod_s16_ae32(p1, p2, &res, j+1, 15);
+	sum+=res;
+	// printf("last prod is %d\n",sum);
+	free(p1);
+	free(p2);
 	*result = (sumtype_t)sum;
 
-//    sumtype_t sum=0;
-//    uint32_t i = 0;
-//    uint32_t cnt = (size>>3)<<3;  //8
+// first prod is -42906
+// sptr:-115 kptr:76 i:24
+// sptr:-117 kptr:83 i:25
+// sptr:-120 kptr:-42 i:26
+// last prod is -56317
+// first prod is 21232
+// sptr:-115 kptr:-51 i:24
+// sptr:-117 kptr:-10 i:25
+// sptr:-120 kptr:11 i:26
+// last prod is 26947
+
 //    for(; i+8-1 <cnt; ){
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
 //        sum += sptr[i]*kptr[i];i++;
+// 	//    printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
+// 		// printf("sum:%d i:%d",sum,i);
 //    }
-//	printf("first prod is %d\n",sum);
+// 	// printf("i:%d cnt:%d\n",i,cnt);
+// 	printf("first prod is %d\n",sum);
 //    for(; i <size; i++){
 //        sum += sptr[i]*kptr[i];
+// 		printf("sptr:%d kptr:%d i:%d\n",sptr[i],kptr[i],i);
+// 	//    printf("sum:%d i:%d size:%d\n",sum,i,size);
 //    }
-//	printf("last prod is %d\n",sum);
+// 	printf("last prod is %d\n",sum);
 //    *result = sum;
 }
 
@@ -81,15 +118,14 @@ TM_INLINE  void tm_dot_prod_pack2(mtype_t* sptr, mtype_t* kptr, uint32_t size, s
         sum0 += sptr[i]*kptr0[i]; sum1 += sptr[i]*kptr1[i]; i++;
         sum0 += sptr[i]*kptr0[i]; sum1 += sptr[i]*kptr1[i]; i++;
     }
-	printf("pack2 first sum0:%d sum1:%d\n",sum0,sum1);
+	// printf("pack2 first sum0:%d sum1:%d\n",sum0,sum1);
     for(; i <size; i++){
         sum0 += sptr[i]*kptr0[i];
         sum1 += sptr[i]*kptr1[i];
     }
-	printf("pack2 last sum0:%d sum1:%d\n",sum0,sum1);
+	// printf("pack2 last sum0:%d sum1:%d\n",sum0,sum1);
     result[0] = sum0;
     result[1] = sum1;
-    return;
 }
 
 TM_INLINE void tm_dot_prod_gap_3x3x1(mtype_t* sptr, mtype_t* kptr, uint32_t* k_oft, sumtype_t* result)
@@ -97,7 +133,6 @@ TM_INLINE void tm_dot_prod_gap_3x3x1(mtype_t* sptr, mtype_t* kptr, uint32_t* k_o
     *result = sptr[k_oft[0]]*kptr[0] + sptr[k_oft[1]]*kptr[1] + sptr[k_oft[2]]*kptr[2] + \
         sptr[k_oft[3]]*kptr[3] + sptr[k_oft[4]]*kptr[4] + sptr[k_oft[5]]*kptr[5] + \
         sptr[k_oft[6]]*kptr[6] + sptr[k_oft[7]]*kptr[7] + sptr[k_oft[8]]*kptr[8] ;
-    return;
 }
 
 TM_INLINE void tm_dot_prod_3x3x1(mtype_t* sptr, mtype_t* kptr, sumtype_t* result)
@@ -105,7 +140,6 @@ TM_INLINE void tm_dot_prod_3x3x1(mtype_t* sptr, mtype_t* kptr, sumtype_t* result
     *result = sptr[0]*kptr[0] + sptr[1]*kptr[1] + sptr[2]*kptr[2] + \
         sptr[3]*kptr[3] + sptr[4]*kptr[4] + sptr[5]*kptr[5] + \
         sptr[6]*kptr[6] + sptr[7]*kptr[7] + sptr[8]*kptr[8] ;
-    return;
 }
 #else
 /*************************** FP8 SIMULATION **********************************/
